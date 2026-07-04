@@ -8,6 +8,7 @@ import os
 import uuid
 import json
 import shutil
+import logging
 import threading
 import time
 from flask import Flask, render_template, request, redirect, url_for, session, send_file, flash
@@ -17,8 +18,6 @@ from ktp_logic import *
 app = Flask(__name__)
 app.secret_key = 'ktp-generator-secret-key-2025-2026'
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024
-
-import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
@@ -362,6 +361,11 @@ def download(sid):
         download_name=output_name,
         mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     )
+
+
+@app.route('/contacts')
+def contacts():
+    return render_template('contacts.html')
 
 
 @app.errorhandler(404)
