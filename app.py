@@ -18,12 +18,15 @@ app = Flask(__name__)
 app.secret_key = 'ktp-generator-secret-key-2025-2026'
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024
 
+import logging
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+logger = logging.getLogger(__name__)
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(
-    os.environ.get('TEMP', os.path.join(BASE_DIR, 'temp')),
-    'ktp_sessions'
-)
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'sessions')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+logger.info("UPLOAD_FOLDER: %s", UPLOAD_FOLDER)
 
 # Cleanup old sessions every hour
 CLEANUP_AGE = 3600  # 1 hour
@@ -94,10 +97,12 @@ def upload():
         'grade': request.form.get('grade', '').strip(),
         'subject': request.form.get('subject', '').strip(),
         'level': request.form.get('level', '').strip(),
+        'school_name': request.form.get('school_name', '').strip(),
     }
     with open(os.path.join(session_dir, 'meta.json'), 'w', encoding='utf-8') as f:
         json.dump(meta, f, ensure_ascii=False)
 
+    logger.info("Upload: sid=%s file=%s meta=%s", sid, ktp_file.filename, meta)
     return redirect(url_for('preview', sid=sid))
 
 
@@ -107,6 +112,7 @@ def preview(sid):
     ktp_path = os.path.join(session_dir, 'uploaded.docx')
 
     if not os.path.exists(ktp_path):
+        logger.warning("Preview: file not found for sid=%s", sid)
         flash('Сессия не найдена. Начните заново.', 'warning')
         return redirect(url_for('index'))
 
@@ -117,6 +123,7 @@ def preview(sid):
         meta = {}
 
     tables = get_tables_info(ktp_path)
+    logger.info("Preview: sid=%s tables=%d", sid, len(tables))
     if not tables:
         flash('В документе не найдено таблиц.', 'warning')
         return redirect(url_for('index'))
@@ -131,11 +138,16 @@ def preview(sid):
 @app.route('/preview/<sid>', methods=['POST'])
 def select_table(sid):
     session_dir = get_session_dir(sid)
-    table_index = int(request.form.get('table_index', 0))
+    try:
+        table_index = int(request.form.get('table_index', 0))
+    except (ValueError, TypeError):
+        logger.warning("Select table: invalid table_index for sid=%s", sid)
+        table_index = 0
 
     with open(os.path.join(session_dir, 'selection.json'), 'w', encoding='utf-8') as f:
         json.dump({'table_index': table_index}, f)
 
+    logger.info("Select table: sid=%s table_index=%d", sid, table_index)
     return redirect(url_for('configure', sid=sid))
 
 
@@ -162,6 +174,7 @@ def configure(sid):
         return redirect(url_for('preview', sid=sid))
 
     lessons = extract_lessons(ktp_path, table_index)
+    logger.info("Configure: sid=%s table_index=%d lessons=%d", sid, table_index, len(lessons))
     if not lessons:
         flash('Не удалось извлечь уроки из таблицы. Попробуйте другую.', 'warning')
         return redirect(url_for('preview', sid=sid))
