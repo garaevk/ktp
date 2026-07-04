@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}КТП-генератор — Готово{% endblock %}
+
+{% block stepprogress %}
+<div class="step-progress mb-4">
+    <div class="step completed">✓</div>
+    <div class="step-line"></div>
+    <div class="step completed">✓</div>
+    <div class="step-line"></div>
+    <div class="step completed">✓</div>
+    <div class="step-line"></div>
+    <div class="step active">4</div>
+</div>
+<div class="step-labels text-center mb-4">
+    <span class="text-success">Загрузка</span>
+    <span>→</span>
+    <span class="text-success">Выбор таблицы</span>
+    <span>→</span>
+    <span class="text-success">Настройка дат</span>
+    <span>→</span>
+    <span class="fw-bold text-primary">Скачивание</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow border-0 rounded-4">
+            <div class="card-body p-4 p-lg-5 text-center">
+
+                <div class="mb-4">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#20c997" stroke-width="1.5">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </div>
+
+                <h3 class="fw-bold mb-2">Готово!</h3>
+                <p class="text-muted mb-4">Файл КТП сформирован. Нажмите кнопку, чтобы скачать.</p>
+
+                <div class="row g-3 mb-4 justify-content-center">
+                    <div class="col-md-3">
+                        <div class="stat-card p-3 rounded-3 bg-light">
+                            <div class="fs-3 fw-bold text-primary">{{ total }}</div>
+                            <div class="small text-muted">Всего уроков</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card p-3 rounded-3 bg-light">
+                            <div class="fs-3 fw-bold text-success">{{ total_with_dates }}</div>
+                            <div class="small text-muted">С датами</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card p-3 rounded-3 bg-light">
+                            <div class="fs-3 fw-bold {% if total_empty > 0 %}text-warning{% else %}text-muted{% endif %}">
+                                {{ total_empty }}
+                            </div>
+                            <div class="small text-muted">Без даты</div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if total_empty > 0 %}
+                <div class="alert alert-warning text-start" role="alert">
+                    <strong>Обратите внимание:</strong> для {{ total_empty }} уроков не хватило дат.
+                    Это может быть связано с тем, что выбранные дни недели и учебные периоды дают меньше дат, чем количество уроков.
+                    Вы можете <a href="{{ url_for('configure', sid=sid) }}" class="alert-link">вернуться к настройкам</a> и
+                    расширить периоды или добавить дни недели.
+                </div>
+                {% endif %}
+
+                <div class="d-grid gap-3 mt-4">
+                    <a href="{{ url_for('download', sid=sid) }}" class="btn btn-success btn-lg rounded-pill fw-bold">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Скачать КТП
+                    </a>
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-primary rounded-pill">
+                        Создать другой КТП
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

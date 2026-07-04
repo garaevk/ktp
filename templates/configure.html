@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+{% block title %}КТП-генератор — Настройка дат{% endblock %}
+
+{% block stepprogress %}
+<div class="step-progress mb-4">
+    <div class="step completed">✓</div>
+    <div class="step-line"></div>
+    <div class="step completed">✓</div>
+    <div class="step-line"></div>
+    <div class="step active">3</div>
+    <div class="step-line"></div>
+    <div class="step">4</div>
+</div>
+<div class="step-labels text-center mb-4">
+    <span class="text-success">Загрузка</span>
+    <span>→</span>
+    <span class="text-success">Выбор таблицы</span>
+    <span>→</span>
+    <span class="fw-bold text-primary">Настройка дат</span>
+    <span>→</span>
+    <span class="text-muted">Скачивание</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<form method="POST" id="config-form">
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+
+        <!-- Summary -->
+        <div class="card shadow border-0 rounded-4 mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <h5 class="fw-bold mb-1">Настройка дат для {{ lessons|length }} уроков</h5>
+                        <p class="text-muted mb-0 small">Укажите учебные периоды, дни недели и выходные дни</p>
+                    </div>
+                    <span class="badge bg-primary rounded-pill fs-6 px-3 py-2">{{ lessons|length }} уроков</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left column: Quarters + Days of week -->
+            <div class="col-lg-8">
+
+                <!-- Quarters -->
+                <div class="card shadow border-0 rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-3">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            Учебные периоды
+                        </h5>
+                        <div id="quarters-container">
+                            {% for q in date_config.quarters %}
+                            <div class="quarter-row row g-2 mb-2 align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted">Название</label>
+                                    <input type="text" name="quarter_name[]" class="form-control form-control-sm" value="{{ q.name }}" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-muted">Начало</label>
+                                    <input type="date" name="quarter_start[]" class="form-control form-control-sm" value="{{ q.start }}" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-muted">Конец</label>
+                                    <input type="date" name="quarter_end[]" class="form-control form-control-sm" value="{{ q.end }}" required>
+                                </div>
+                                <div class="col-md-2 d-flex gap-1">
+                                    <button type="button" class="btn btn-outline-danger btn-sm remove-btn" style="visibility: hidden;">✕</button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-quarter">
+                            + Добавить период
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Days of week -->
+                <div class="card shadow border-0 rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-3">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            Дни недели для уроков
+                        </h5>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for i in range(6) %}
+                            <div class="d-flex align-items-center gap-2 border rounded-pill px-3 py-2 day-row" id="day-row-{{ i }}">
+                                <input class="form-check-input day-check" type="checkbox" name="days[]"
+                                       value="{{ i }}" id="day{{ i }}"
+                                       {% if i in date_config.days_of_week %}checked{% endif %}>
+                                <label class="form-check-label mb-0" for="day{{ i }}">{{ weekdays[i] }}</label>
+                                <input type="number" name="lessons_per_day_{{ i }}" class="form-control form-control-sm lpd-input"
+                                       value="{{ lessons_per_day.get(i, 1) }}" min="0" max="8"
+                                       style="width: 55px;" data-day="{{ i }}">
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="mt-2 small text-muted">
+                            Воскресенье исключено (выходной день)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Holiday Ranges -->
+                <div class="card shadow border-0 rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-3">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><rect x="2" y="2" width="20" height="20" rx="2"/><line x1="6" y1="2" x2="6" y2="6"/><line x1="18" y1="2" x2="18" y2="6"/><line x1="2" y1="8" x2="22" y2="8"/></svg>
+                            Каникулы и выходные периоды
+                        </h5>
+                        <div id="holiday-ranges-container">
+                            {% for hr in date_config.holiday_ranges %}
+                            <div class="hr-row row g-2 mb-2 align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted">Название</label>
+                                    <input type="text" name="hr_name[]" class="form-control form-control-sm" value="{{ hr.name }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-muted">Начало</label>
+                                    <input type="date" name="hr_start[]" class="form-control form-control-sm" value="{{ hr.start }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-muted">Конец</label>
+                                    <input type="date" name="hr_end[]" class="form-control form-control-sm" value="{{ hr.end }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-danger btn-sm remove-hr-btn">✕</button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-hr">
+                            + Добавить период каникул
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Specific Holidays -->
+                <div class="card shadow border-0 rounded-4 mb-4">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-3">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            Праздничные дни
+                        </h5>
+                        <div id="specific-holidays-container">
+                            {% for sh in date_config.specific_holidays %}
+                            <div class="sh-row row g-2 mb-2 align-items-end">
+                                <div class="col-md-5">
+                                    <label class="form-label small text-muted">Дата</label>
+                                    <input type="date" name="sh_date[]" class="form-control form-control-sm" value="{{ sh.date }}">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label small text-muted">Название</label>
+                                    <input type="text" name="sh_name[]" class="form-control form-control-sm" value="{{ sh.name }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-danger btn-sm remove-sh-btn">✕</button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="add-sh">
+                            + Добавить праздник
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right column: Preview -->
+            <div class="col-lg-4">
+                <div class="card shadow border-0 rounded-4 mb-4 sticky-lg-top" style="top: 1rem;">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-3">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            Предпросмотр уроков
+                        </h5>
+                        <div class="lesson-preview" style="max-height: 60vh; overflow-y: auto;">
+                            <table class="table table-sm table-bordered small">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>№</th>
+                                        <th>Тема</th>
+                                        <th>Ч</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for lesson in lessons[:10] %}
+                                    <tr>
+                                        <td class="text-center">{{ lesson.num }}</td>
+                                        <td class="text-truncate" style="max-width: 180px;">{{ lesson.theme[:40] }}</td>
+                                        <td class="text-center">{{ lesson.hours }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if lessons|length > 10 %}
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted">… ещё {{ lessons|length - 10 }} уроков</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="d-flex justify-content-between mt-3 mb-5">
+            <a href="{{ url_for('preview', sid=sid) }}" class="btn btn-outline-secondary rounded-pill px-4">
+                ← Назад к таблицам
+            </a>
+            <button type="submit" class="btn btn-success rounded-pill px-5 fw-semibold btn-lg">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><polyline points="6 9 12 15 18 9"/></svg>
+                Сгенерировать КТП
+            </button>
+        </div>
+
+    </div>
+</div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Toggle lessons-per-day input when day checkbox changes
+document.querySelectorAll('.day-check').forEach(cb => {
+    const day = cb.value;
+    const input = document.querySelector(`.lpd-input[data-day="${day}"]`);
+    function updateRow() {
+        if (cb.checked) {
+            input.disabled = false;
+            if (!input.value || parseInt(input.value) === 0) input.value = 1;
+        } else {
+            input.disabled = true;
+            input.value = 0;
+        }
+    }
+    cb.addEventListener('change', updateRow);
+    updateRow();
+});
+
+document.getElementById('add-quarter')?.addEventListener('click', function() {
+    const container = document.getElementById('quarters-container');
+    const rows = container.querySelectorAll('.quarter-row');
+    const idx = rows.length;
+    const template = `
+    <div class="quarter-row row g-2 mb-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small text-muted">Название</label>
+            <input type="text" name="quarter_name[]" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">Начало</label>
+            <input type="date" name="quarter_start[]" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">Конец</label>
+            <input type="date" name="quarter_end[]" class="form-control form-control-sm" required>
+        </div>
+        <div class="col-md-2">
+            <button type="button" class="btn btn-outline-danger btn-sm remove-btn">✕</button>
+        </div>
+    </div>`;
+    const div = document.createElement('div');
+    div.innerHTML = template;
+    container.appendChild(div.firstElementChild);
+    attachRemove();
+});
+
+// Add holiday range
+document.getElementById('add-hr')?.addEventListener('click', function() {
+    const container = document.getElementById('holiday-ranges-container');
+    const template = `
+    <div class="hr-row row g-2 mb-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small text-muted">Название</label>
+            <input type="text" name="hr_name[]" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">Начало</label>
+            <input type="date" name="hr_start[]" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">Конец</label>
+            <input type="date" name="hr_end[]" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2">
+            <button type="button" class="btn btn-outline-danger btn-sm remove-btn">✕</button>
+        </div>
+    </div>`;
+    const div = document.createElement('div');
+    div.innerHTML = template;
+    container.appendChild(div.firstElementChild);
+    attachRemove();
+});
+
+// Add specific holiday
+document.getElementById('add-sh')?.addEventListener('click', function() {
+    const container = document.getElementById('specific-holidays-container');
+    const template = `
+    <div class="sh-row row g-2 mb-2 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label small text-muted">Дата</label>
+            <input type="date" name="sh_date[]" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-5">
+            <label class="form-label small text-muted">Название</label>
+            <input type="text" name="sh_name[]" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2">
+            <button type="button" class="btn btn-outline-danger btn-sm remove-btn">✕</button>
+        </div>
+    </div>`;
+    const div = document.createElement('div');
+    div.innerHTML = template;
+    container.appendChild(div.firstElementChild);
+    attachRemove();
+});
+
+function attachRemove() {
+    document.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.removeEventListener('click', removeHandler);
+        btn.addEventListener('click', removeHandler);
+    });
+}
+
+function removeHandler(e) {
+    const row = e.target.closest('[class*="-row"]');
+    if (row) {
+        const container = row.parentElement;
+        if (container.querySelectorAll('[class*="-row"]').length > 1) {
+            row.remove();
+        }
+    }
+}
+
+attachRemove();
+</script>
+{% endblock %}
